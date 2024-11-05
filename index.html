@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Duck Race Game</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 50px;
+        background-image: url("https://static2.yan.vn/YanNews/202204/202204290508363208-86658640-1b98-4975-9440-c0ec1695330e.jpeg");
+        background-size: cover;
+      }
+      #track {
+        position: relative;
+        width: 90%;
+        min-height: 0px;
+        border: 2px solid #333;
+        background-image: url("./Frame160.png"); /* Thay URL bằng đường dẫn tới hình ảnh đường đua */
+        /*background-size: cover; /* Điều chỉnh hình ảnh cho phù hợp với kích thước */
+        overflow: hidden;
+        margin-top: 20px;
+      }
+      .duck {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        transition: left 0.2s;
+        margin-top: 20px;
+        color: rgb(0, 195, 255);
+      }
+      .duck-label {
+        position: absolute;
+        font-size: 12px;
+        top: -20px;
+        left: 0;
+        text-align: center;
+        width: 50px;
+        margin-top: 8px;
+      }
+      #controls {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        margin-top: 20px;
+      }
+      #start-btn,
+      #add-duck-btn {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      #timer {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="color: rgb(255, 0, 234)">Game đua Meme</h1>
+
+    <div id="controls">
+      <textarea
+        id="duck-names"
+        placeholder="Vui lòng nhập tên Meme,mỗi dòng 1 Meme !"
+        rows="5"
+        cols="30"
+      ></textarea>
+      <button id="add-duck-btn" class="btn btn-outline-info">Thêm Meme</button>
+      <a href="./index.html"
+        ><button class="btn btn-danger">Đặt lại tất cả</button></a
+      >
+      <input type="number" id="race-time" placeholder="Thời gian chạy (s)" />
+      <button id="start-btn" class="btn btn-primary">Bắt đầu</button>
+    </div>
+
+    <div id="timer">Thời gian : <span id="time-left">0</span> giây</div>
+    <div id="track"></div>
+
+    <script>
+      const ducks = [];
+      const track = document.getElementById("track");
+      const trackWidth = track.clientWidth;
+      let raceInterval;
+      let countdownInterval;
+      let lastMinuteBoostedDuck = null; // Vịt được bứt phá phút chót
+
+      // Mảng hình ảnh vịt ngẫu nhiên
+      const duckImages = [
+        "https://banner2.cleanpng.com/20240405/hvp/transparent-pepe-the-frog-cartoon-frog-with-blue-cap-and-rainbow66106bcb2a6231.10801675.webp",
+        "https://banner2.cleanpng.com/20240405/lge/transparent-pepe-the-frog-batman-arkham-knight-character-with-green-mask660fa354133704.28201621.webp",
+        "https://banner2.cleanpng.com/20240403/kay/transparent-pepe-the-frog-cartoon-frog-hanging-from-stick-sad-expression660db9ca00e2b9.32743919.webp",
+        "https://banner2.cleanpng.com/20240404/avk/transparent-pepe-the-frog-cartoon-frog-in-blue-shirt-crying660e7f9ac93c34.85769145.webp",
+        "https://banner2.cleanpng.com/20240323/rru/transparent-cell-phone-frog-with-watch-talking-on-phone65fec5b5880a04.39656784.webp",
+        "https://banner2.cleanpng.com/20190826/pvk/transparent-hamster-5d64a5103b7201.0936965615668769442435.jpg",
+        "https://banner2.cleanpng.com/20190430/ipz/kisspng-hello-kitty-aggretsuko-sanrio-character-cuteness-5cc8f388c40f78.5525863815566734168031.jpg",
+        "https://banner2.cleanpng.com/20240404/afs/transparent-meme-rage-comic-know-your-meme-man-crying-man-crying-with-tears-sadness-despair660f370acde0f6.63456410.webp",
+        "https://banner2.cleanpng.com/20240404/ysr/transparent-spongebob-happy-cartoon-character-with-sponge-hat-and-rainbo660e9264314027.46002034.webp",
+        "https://banner2.cleanpng.com/20240405/wpz/transparent-ash-ketchum-pikachu-cartoon-character-with-evil-smirk6610752ae78c21.71566817.webp",
+        "https://banner2.cleanpng.com/20240404/cag/transparent-emoticon-cartoon-character-with-shocked-expression-wide-ey660e845f940bb7.27979071.webp",
+        "https://banner2.cleanpng.com/20240404/hwz/transparent-troll-face-man-with-tears-eyes-closed-sad-expression660e6ebb2ad9f4.80118776.webp",
+        "https://banner2.cleanpng.com/20240409/bcy/transparent-troll-face-cartoon-character-with-open-mouth-humorous-expres66158440d7c9e7.57401015.webp",
+      ];
+
+      document
+        .getElementById("add-duck-btn")
+        .addEventListener("click", addDucks);
+      document.getElementById("start-btn").addEventListener("click", startRace);
+
+      function addDucks() {
+        const namesInput = document.getElementById("duck-names").value.trim();
+        const names = namesInput
+          .split("\n")
+          .map((name) => name.trim())
+          .filter((name) => name);
+
+        if (names.length === 0) {
+          alert("Vui lòng nhập ít nhất một tên !");
+          return;
+        }
+
+        names.forEach((name) => {
+          const duckId = "duck" + (ducks.length + 1);
+          const duckElement = document.createElement("div");
+          duckElement.className = "duck";
+          duckElement.id = duckId;
+          duckElement.style.top = ducks.length * 60 + "px";
+          duckElement.style.left = "0px";
+
+          const randomImage =
+            duckImages[Math.floor(Math.random() * duckImages.length)];
+          const duckImg = document.createElement("img");
+          duckImg.src = randomImage;
+          duckImg.style.width = "45px";
+          duckImg.style.height = "40px";
+
+          const duckLabel = document.createElement("div");
+          duckLabel.className = "duck-label";
+          duckLabel.innerText = name;
+
+          duckElement.appendChild(duckLabel);
+          duckElement.appendChild(duckImg);
+          track.appendChild(duckElement);
+
+          ducks.push({
+            id: duckId,
+            position: 0,
+            name: name,
+            baseSpeed: Math.random() * 2 + 1,
+          });
+        });
+
+        track.style.height = Math.max(200, ducks.length * 63) + "px";
+        document.getElementById("duck-names").value = "";
+      }
+
+      function startRace() {
+        if (ducks.length < 2) {
+          alert("Phải có trên 2 tên !");
+          return;
+        }
+
+        const raceTime = parseInt(
+          document.getElementById("race-time").value,
+          10
+        );
+
+        if (isNaN(raceTime) || raceTime <= 0) {
+          alert("Thời gian chạy không hợp lệ");
+          return;
+        }
+        if (raceTime > 35) {
+          alert("Thời gian chỉ cho phép nhỏ hơn 35");
+          return;
+        }
+
+        ducks.forEach((duck) => (duck.position = 0));
+        document.getElementById("time-left").innerText = raceTime;
+
+        let timeLeft = raceTime;
+        countdownInterval = setInterval(() => {
+          timeLeft--;
+          document.getElementById("time-left").innerText = timeLeft;
+
+          if (timeLeft === 4 && !lastMinuteBoostedDuck) {
+            // Chọn một con vịt ngẫu nhiên để tăng tốc
+            lastMinuteBoostedDuck =
+              ducks[Math.floor(Math.random() * ducks.length)];
+            lastMinuteBoostedDuck.boostSpeed = 10; // Tăng tốc lên 4 lần
+          }
+
+          if (timeLeft <= 0) {
+            clearInterval(countdownInterval);
+            clearInterval(raceInterval);
+            determineWinner();
+          }
+        }, 1000);
+
+        raceInterval = setInterval(() => {
+          ducks.forEach((duck) => {
+            let randomFactor = Math.random() * 1.5 + 0.5;
+            let move = duck.baseSpeed * randomFactor;
+
+            // Nếu là con vịt được bứt phá phút chót, áp dụng boostSpeed
+            if (duck === lastMinuteBoostedDuck && timeLeft <= 5) {
+              move *= duck.boostSpeed || 1;
+            }
+
+            duck.position += move;
+            document.getElementById(duck.id).style.left = duck.position + "px";
+          });
+        }, 100);
+      }
+
+      function determineWinner() {
+        let winner = ducks[0];
+        ducks.forEach((duck) => {
+          if (duck.position > winner.position) {
+            winner = duck;
+          }
+        });
+        alert("Chúc mừng " + winner.name + " !");
+        lastMinuteBoostedDuck = null; // Đặt lại bứt phá phút chót sau mỗi cuộc đua
+      }
+    </script>
+  </body>
+</html>
